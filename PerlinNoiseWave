@@ -1,0 +1,48 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include "PerlinNoise.h"  // Custom Perlin noise function
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+#define SOUND_SENSOR_PIN 2  // Analog pin for KY-038
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+PerlinNoise perlin;
+float offsetX = 0;  // Controls horizontal movement
+
+void setup() {
+    Serial.begin(115200);
+    Wire.begin(7, 6);
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for (;;);
+    }
+    display.clearDisplay();
+}
+
+void loop() {
+    display.clearDisplay();
+    float soundLevel = analogRead(SOUND_SENSOR_PIN) / 4096.0; // Normalize 0-1
+    drawPerlinWave(soundLevel);
+    display.display();
+    offsetX += 0.3;  // Moves the noise pattern or fast movement 
+    delay(50);
+}
+
+void drawPerlinWave(float intensity) {
+    
+    int lastY = SCREEN_HEIGHT / 2;  // Initialize at screen center lastY variable stores the previous wave height at each x position
+
+    for (int x = 0; x < SCREEN_WIDTH; x++) {
+        float noiseVal = perlin.noise(x * 0.1, offsetX);  // Smooth scaling
+        int y = map(noiseVal * intensity * 10, 0, 10, SCREEN_HEIGHT / 2 - 20, SCREEN_HEIGHT / 2 + 20); // increase range 
+
+        if (x > 0) {  // Ensure we have a previous point
+            display.drawLine(x - 1, lastY, x, y, WHITE);  // Connect points
+        }
+
+        lastY = y;  // Update for the next iteration
+    }
+}
